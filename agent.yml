@@ -1,0 +1,37 @@
+name: Dobi Threads agent
+
+on:
+  schedule:
+    # каждый час с 07:15 до 23:15 по Москве (время в cron — UTC)
+    - cron: "15 4-20 * * *"
+  workflow_dispatch: {}      # кнопка «Run workflow» для ручного запуска
+
+permissions:
+  contents: write            # чтобы сохранять state.json в репозиторий
+
+concurrency:
+  group: dobi-agent
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run agent
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python agent.py run
+      - name: Save state
+        if: always()
+        run: |
+          git config user.name "dobi-agent"
+          git config user.email "dobi-agent@users.noreply.github.com"
+          git add state.json || true
+          git commit -m "state $(date -u +%F_%H:%M)" || echo "нет изменений"
+          git push || true

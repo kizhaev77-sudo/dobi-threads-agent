@@ -1,0 +1,27 @@
+name: Refresh Threads token
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"      # каждый понедельник, 09:00 по Москве
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refresh and store new token
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          NEW=$(python agent.py refresh-token | head -n 1)
+          if [ -n "$NEW" ] && [ "$NEW" != "None" ]; then
+            gh secret set THREADS_TOKEN --body "$NEW" --repo "$GITHUB_REPOSITORY"
+            echo "Токен обновлён"
+          else
+            echo "Не удалось обновить токен" && exit 1
+          fi
