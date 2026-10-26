@@ -4,7 +4,13 @@ on:
   schedule:
     # каждый час с 07:15 до 23:15 по Москве (время в cron — UTC)
     - cron: "15 4-20 * * *"
-  workflow_dispatch: {}      # кнопка «Run workflow» для ручного запуска
+  workflow_dispatch:         # кнопка «Run workflow» для ручного запуска
+    inputs:
+      mode:
+        description: "status = только проверка, dry = пробный без публикаций, run = по-настоящему"
+        default: "status"
+        type: choice
+        options: [status, dry, run]
 
 permissions:
   contents: write            # чтобы сохранять state.json в репозиторий
@@ -26,7 +32,11 @@ jobs:
         env:
           THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python agent.py run
+          MODE: ${{ github.event.inputs.mode || 'run' }}
+        run: |
+          if [ "$MODE" = "status" ]; then python agent.py status
+          elif [ "$MODE" = "dry" ]; then DRY_RUN=1 python agent.py run
+          else python agent.py run; fi
       - name: Save state
         if: always()
         run: |
