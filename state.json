@@ -1,9 +1,13 @@
 {
   "replied_comments": [],
   "promo_threads": [],
-  "promo_authors_by_day": {},
-  "posted": [],
-  "last_post_at": null,
+  "promo_authors_by_day": {
+    "2026-10-26": []
+  },
+  "posted": [
+    "osago_remont"
+  ],
+  "last_post_at": "2026-10-26T20:04:45.476613+03:00",
   "text_index": 0,
   "skipped_for_kir": []
 }
