@@ -184,27 +184,51 @@ def bad_thread(text):
 
 def cmd_post():
     posts = load_json("posts.json", [])
-    todo = [p for p in posts if p["id"] not in STATE["posted"]]
-    if not todo:
-        log("posts.json: всё опубликовано — добавьте новые посты.")
+    if not posts:
+        log("posts.json пуст — добавьте посты.")
         return
-    gap_h = CFG.get("hours_between_posts", 6)
+    per_run = int(CFG.get("posts_per_run", 1))
+    gap_min = float(CFG.get("minutes_between_posts_in_run", 3))
+    gap_h = CFG.get("hours_between_posts", 0)
     last = STATE.get("last_post_at")
-    if last and now_msk() - datetime.fromisoformat(last) < timedelta(hours=gap_h):
+    if gap_h and last and now_msk() - datetime.fromisoformat(last) < timedelta(hours=gap_h):
         log(f"Свой пост: ещё рано (интервал {gap_h} ч).")
         return
-    p = todo[0]
-    main = publish(text=p["text"], image_url=p.get("image_url"), video_url=p.get("video_url"))
-    log("Опубликован пост", p["id"], main or "")
-    if p.get("second"):
-        time.sleep(5)
-        second = p["second"].replace("LINK", f"{CFG.get('site','iimagazin.ru')}/?utm_source=threads&utm_medium=post&utm_campaign=post_{p['id']}")
-        if main or DRY_RUN:
-            publish(text=second, reply_to=main)
-            log("  + вторая часть со ссылкой")
-    if not DRY_RUN:
-        STATE["posted"].append(p["id"])
-        STATE["last_post_at"] = now_msk().isoformat()
+    done = 0
+    dry_used = []
+    while done < per_run:
+        if quiet_hours():
+            log("Наступила ночь — останавливаюсь.")
+            break
+        todo = [p for p in posts if p["id"] not in STATE["posted"] and p["id"] not in dry_used]
+        if not todo:
+            if CFG.get("cycle_posts", True):
+                dry_used = []
+                log("Все посты опубликованы — начинаю круг заново.")
+                STATE["posted"] = []
+                STATE["cycle"] = STATE.get("cycle", 0) + 1
+                todo = list(posts)
+            else:
+                log("posts.json: всё опубликовано — добавьте новые посты.")
+                break
+        p = todo[0]
+        main = publish(text=p["text"], image_url=p.get("image_url"), video_url=p.get("video_url"))
+        log("Опубликован пост", p["id"], main or "")
+        if p.get("second"):
+            time.sleep(5)
+            second = p["second"].replace("LINK", f"{CFG.get('site','iimagazin.ru')}/?utm_source=threads&utm_medium=post&utm_campaign=post_{p['id']}")
+            if main or DRY_RUN:
+                publish(text=second, reply_to=main)
+                log("  + вторая часть со ссылкой")
+        done += 1
+        dry_used.append(p["id"])
+        if not DRY_RUN:
+            STATE["posted"].append(p["id"])
+            STATE["last_post_at"] = now_msk().isoformat()
+            save_json("state.json", STATE)
+        if done < per_run:
+            time.sleep(1 if DRY_RUN else gap_min * 60)
+    log(f"Своих постов за запуск: {done}")
 
 
 # ---------------------------------------------------------------- 2. ответы на комментарии
@@ -387,7 +411,7 @@ def main():
         elif cmd == "promo":
             cmd_promo()
         elif cmd == "run":
-            for f in (cmd_post, cmd_replies, cmd_promo):
+            for f in (cmd_replies, cmd_promo, cmd_post):
                 try:
                     f()
                 except ApiError as e:
