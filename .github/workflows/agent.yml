@@ -2,8 +2,10 @@ name: Dobi Threads agent
 
 on:
   schedule:
-    # каждый час с 07:15 до 23:15 по Москве (время в cron — UTC)
-    - cron: "15 4-20 * * *"
+    # каждые полчаса с 07:15 до 23:45 по Москве (время в cron — UTC).
+    # GitHub часто опаздывает и пропускает запуски, поэтому запуск в :45 — запасной:
+    # посты он публикует, только если в :15 их не было (hours_between_posts в config.json)
+    - cron: "15,45 4-20 * * *"
   workflow_dispatch:         # кнопка «Run workflow» для ручного запуска
     inputs:
       mode:
@@ -44,4 +46,6 @@ jobs:
           git config user.email "dobi-agent@users.noreply.github.com"
           git add state.json || true
           git commit -m "state $(date -u +%F_%H:%M)" || echo "нет изменений"
+          # если во время запуска в репозиторий загружали файлы — сначала подтягиваем их
+          git pull --rebase -X theirs origin main || true
           git push || true
