@@ -2,7 +2,8 @@
   "replied_comments": [],
   "promo_threads": [],
   "promo_authors_by_day": {
-    "2026-10-26": []
+    "2026-10-26": [],
+    "2026-10-27": []
   },
   "posted": [
     "osago_remont",
@@ -15,9 +16,14 @@
     "finupolnomochenny",
     "zimnyaya_rezina",
     "shtraf_50",
-    "garantiya_45"
+    "garantiya_45",
+    "vozvrat_internet",
+    "navyazannye_uslugi",
+    "sladkie_napitki",
+    "belok",
+    "plato"
   ],
-  "last_post_at": "2026-10-26T21:08:48.018423+03:00",
+  "last_post_at": "2026-10-27T10:22:30.922055+03:00",
   "text_index": 0,
   "skipped_for_kir": []
 }
