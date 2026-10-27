@@ -52,7 +52,7 @@ jobs:
           git push || true
       - name: Next run
         # Только в публичном репозитории: там минуты Actions бесплатны, а ожидание длится до часа
-        if: always() && github.event.repository.private == false && (github.event_name == 'schedule' || github.event.inputs.mode == 'run')
+        if: ${{ !cancelled() && github.event.repository.private == false && (github.event_name == 'schedule' || github.event.inputs.mode == 'run') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
