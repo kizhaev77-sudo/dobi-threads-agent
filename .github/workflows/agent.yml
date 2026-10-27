@@ -2,9 +2,9 @@ name: Dobi Threads agent
 
 on:
   schedule:
-    # Основной запуск — будильник cron-job.org (каждый час в :15, 07–23 МСК).
-    # Это расписание GitHub — запасное: оно часто опаздывает или пропускает запуски.
-    # Если оба пришли в один час, второй посты не публикует (hours_between_posts в config.json)
+    # Основной запуск — цепочка: каждый запуск сам запускает следующий в :15 (шаг «Next run»).
+    # Это расписание GitHub — запасное: перезапускает цепочку, если она оборвалась.
+    # Если два запуска пришли в один час, второй посты не публикует (hours_between_posts в config.json)
     - cron: "15 4-20 * * *"
   workflow_dispatch:         # кнопка «Run workflow» для ручного запуска
     inputs:
@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write            # чтобы сохранять state.json в репозиторий
+  actions: write             # чтобы запускать следующий запуск цепочки
 
 concurrency:
   group: dobi-agent
@@ -24,7 +25,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,3 +50,18 @@ jobs:
           # если во время запуска в репозиторий загружали файлы — сначала подтягиваем их
           git pull --rebase -X theirs origin main || true
           git push || true
+      - name: Next run
+        # Только в публичном репозитории: там минуты Actions бесплатны, а ожидание длится до часа
+        if: always() && github.event.repository.private == false && (github.event_name == 'schedule' || github.event.inputs.mode == 'run')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          now=$(date -u +%s)
+          next=$(( now / 3600 * 3600 + 900 ))
+          [ "$next" -le $(( now + 60 )) ] && next=$(( next + 3600 ))
+          echo "Следующий запуск в $(date -u -d @$next +%H:%M) UTC"
+          sleep $(( next - now ))
+          # если в очереди уже есть запуск (например, запасной по расписанию) — второй не нужен
+          other=$(gh run list --workflow agent.yml --limit 20 --json status,databaseId \
+            --jq '[.[] | select(.status != "completed" and .databaseId != ${{ github.run_id }})] | length')
+          if [ "$other" = "0" ]; then gh workflow run agent.yml -f mode=run; else echo "Уже есть запуск в очереди"; fi
