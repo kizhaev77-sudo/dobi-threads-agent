@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dobi agent — Connected</title><link rel="stylesheet" href="style.css"></head><body>
+<nav><a href="./">Dobi agent</a><a href="terms.html">Terms of Service</a><a href="data-deletion.html">Data deletion</a><a href="https://iimagazin.ru/politika.html">Privacy Policy</a></nav>
+<main>
+<h1 id="title">Connecting…</h1>
+<p id="msg" class="muted"></p>
+<div class="box" id="codebox" hidden><p style="margin:0 0 8px">Authorization code (valid for one hour, single use):</p><code id="code"></code><p style="margin:12px 0 0"><button type="button" id="copy">Copy code</button></p></div>
+<p class="muted">The code is exchanged for an access token by the app owner's private backend job (GitHub Actions secret). It is never stored on this page.</p>
+</main>
+<script>
+const q = new URLSearchParams(location.search);
+const title = document.getElementById("title"), msg = document.getElementById("msg");
+if (q.get("code")) {
+  title.textContent = "Threads account connected";
+  msg.textContent = "Dobi agent received permission to manage this Threads account.";
+  document.getElementById("code").textContent = q.get("code").replace(/#_$/, "");
+  document.getElementById("codebox").hidden = false;
+  document.getElementById("copy").onclick = () => navigator.clipboard.writeText(document.getElementById("code").textContent);
+} else if (q.get("error")) {
+  title.textContent = "Connection cancelled";
+  msg.textContent = q.get("error_description") || q.get("error");
+} else {
+  title.textContent = "Dobi agent";
+  msg.textContent = "This page is the return address after logging in with Threads.";
+}
+</script>
+</body></html>
